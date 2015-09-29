@@ -574,8 +574,17 @@ abstract class GeneratedMessage {
   // Merge fields from a previously decoded JSON object.
   // (Called recursively on nested messages.)
   void _mergeFromJson(
-      Map<String, dynamic> json,
+      dynamic json, // Map<String, dynamic> or List<dynamic>,
       ExtensionRegistry extensionRegistry) {
+
+    if (json is List) {
+      Map<String, dynamic> objectJson = <String, dynamic>{};
+      for (int tagNumber = 0; tagNumber < json.length; tagNumber++) {
+        if (json[tagNumber] != null)
+          objectJson[tagNumber.toString()] = json[tagNumber];
+      }
+      json = objectJson;
+    }
 
     // Extract a value from its JSON representation.
 
@@ -696,6 +705,15 @@ abstract class GeneratedMessage {
     case PbFieldType._GROUP_BIT:
     case PbFieldType._MESSAGE_BIT:
       if (value is Map) {
+        GeneratedMessage subMessage =
+            _getEmptyMessage(tagNumber, extensionRegistry);
+        subMessage._mergeFromJson(value, extensionRegistry);
+        return subMessage;
+      }
+      // TODO(jackson): Make this less of a hack
+      if (value is List) {
+        if (value[0] != null && !value[0].endsWith('.pr'))
+          value.insert(0, null);
         GeneratedMessage subMessage =
             _getEmptyMessage(tagNumber, extensionRegistry);
         subMessage._mergeFromJson(value, extensionRegistry);
