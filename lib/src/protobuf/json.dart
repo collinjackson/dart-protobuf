@@ -90,6 +90,27 @@ void _mergeFromJsonMap(
   }
 }
 
+RegExp _messageIdRegExp = new RegExp(r'^[a-z]+[.][a-z]+$');
+
+void _mergeFromJsonList(
+    _FieldSet fs, List<dynamic> json, ExtensionRegistry registry) {
+  // JSPB arrays are 1-indexed
+  json.insert(0, null);
+  for (int key = 1; key < json.length; key++) {
+    var fi = fs._meta.byTagAsString[key.toString()];
+    if (fi == null) {
+      if (registry == null) continue; // Unknown tag; skip
+      fi = registry.getExtension(fs._messageName, key);
+      if (fi == null) continue; // Unknown tag; skip
+    }
+    if (fi.isRepeated && json[key] is List) {
+      _appendJsonList(fs, json[key], fi, registry);
+    } else {
+      _setJsonField(fs, json[key], fi, registry);
+    }
+  }
+}
+
 void _appendJsonList(
     _FieldSet fs, List json, FieldInfo fi, ExtensionRegistry registry) {
   List repeated = fs._ensureRepeatedField(fi);
@@ -107,6 +128,8 @@ void _setJsonField(
 
 _convertJsonValue(_FieldSet fs, value, int tagNumber, int fieldType,
     ExtensionRegistry registry) {
+  if (value == null)
+    return null;
   String expectedType; // for exception message
   switch (PbFieldType._baseType(fieldType)) {
     case PbFieldType._BOOL_BIT:
@@ -185,6 +208,12 @@ _convertJsonValue(_FieldSet fs, value, int tagNumber, int fieldType,
         GeneratedMessage subMessage =
             fs._meta._makeEmptyMessage(tagNumber, registry);
         _mergeFromJsonMap(subMessage._fieldSet, value, registry);
+        return subMessage;
+      }
+      if (value is List) {
+        GeneratedMessage subMessage =
+            fs._meta._makeEmptyMessage(tagNumber, registry);
+        _mergeFromJsonList(subMessage._fieldSet, value, registry);
         return subMessage;
       }
       expectedType = 'nested message or group';
