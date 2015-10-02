@@ -95,6 +95,11 @@ RegExp _messageIdRegExp = new RegExp(r'^[a-z]+[.][a-z]+$');
 void _mergeFromJsonList(
     _FieldSet fs, List<dynamic> json, ExtensionRegistry registry) {
   // JSPB arrays are 1-indexed
+  if (json.length > 0 && json[0] is String &&
+      _messageIdRegExp.hasMatch(json[0])) {
+    print("Skipping ${json[0]} which looks like a jspb.message_id");
+    json.removeAt(0);
+  }
   json.insert(0, null);
   for (int key = 1; key < json.length; key++) {
     var fi = fs._meta.byTagAsString[key.toString()];
